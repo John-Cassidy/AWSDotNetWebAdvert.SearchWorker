@@ -1,11 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
-
+using AdvertApi.Models.Messages;
 using Amazon.Lambda.Core;
 using Amazon.Lambda.SNSEvents;
-
+using Nest;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
@@ -19,9 +20,14 @@ namespace AWSDotNetWebAdvert.SearchWorker
         /// the AWS credentials will come from the IAM role associated with the function and the AWS region will be set to the
         /// region the Lambda function is executed in.
         /// </summary>
-        public SearchWorker()
-        {
+        public SearchWorker() : this(ElasticSearchHelper.GetInstance(ConfigurationHelper.Instance)) {
 
+        }
+
+        private readonly IElasticClient _client;
+        
+        public SearchWorker(IElasticClient client) {
+            _client = client;
         }
 
 
@@ -44,8 +50,11 @@ namespace AWSDotNetWebAdvert.SearchWorker
         {
             context.Logger.LogLine($"Processed record {record.Sns.Message}");
 
-            // TODO: Do interesting work based on the new message
-            await Task.CompletedTask;
+            var message = JsonSerializer.Deserialize<AdvertConfirmedMessage>(
+                    record.Sns.Message,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var advertDocument = MappingHelper.Map(message);
+            await _client.IndexDocumentAsync(advertDocument);
         }
     }
 }
