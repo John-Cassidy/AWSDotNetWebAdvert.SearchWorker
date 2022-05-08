@@ -54,7 +54,9 @@ namespace AWSDotNetWebAdvert.SearchWorker
                     record.Sns.Message,
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             var advertDocument = MappingHelper.Map(message);
-            await _client.IndexDocumentAsync(advertDocument);
+            var response = await _client.IndexDocumentAsync(advertDocument);
+
+            context.Logger.LogLine($"Indexing Result: {response.Id}, {response.Index}, {response.DebugInformation}");
         }
     }
 }
